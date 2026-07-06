@@ -1,3 +1,187 @@
+// ============================================================
+// COLCHOEIRO ERP — Regras de Segurança Firestore
+// Versão: Plano Gratuito (Spark) — Empresa Única
+// Firebase Storage: REMOVIDO
+//
+// Copie este conteúdo no console Firebase:
+// Firestore → Regras → Cole e publique
+// ============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Funções auxiliares ────────────────────────────────────
+
+    // Verifica se o usuário está autenticado
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // Pega o perfil do usuário no Firestore
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // Verifica se o usuário pertence à empresa
+    function belongsToCompany(companyId) {
+      return isAuth() && userDoc().companyId == companyId;
+    }
+
+    // Verifica o perfil do usuário
+    function hasRole(companyId, role) {
+      return belongsToCompany(companyId) && userDoc().role == role;
+    }
+
+    // Admin ou Gerente da empresa
+    function isManager(companyId) {
+      return belongsToCompany(companyId) &&
+             userDoc().role in ['admin', 'gerente'];
+    }
+
+    // Qualquer perfil com acesso comercial
+    function isSalesOrAbove(companyId) {
+      return belongsToCompany(companyId) &&
+             userDoc().role in ['admin', 'gerente', 'vendedor'];
+    }
+
+    // ── Empresas (companies) ──────────────────────────────────
+    // Cada empresa é um "tenant" isolado
+    match /companies/{companyId} {
+      allow read: if belongsToCompany(companyId);
+      allow write: if hasRole(companyId, 'admin');
+
+      // ── Usuários da empresa ─────────────────────────────────
+      match /users/{userId} {
+        // Usuário lê próprio perfil; admin lê todos
+        allow read: if belongsToCompany(companyId) &&
+                       (request.auth.uid == userId || isManager(companyId));
+        allow create: if hasRole(companyId, 'admin');
+        allow update: if hasRole(companyId, 'admin') ||
+                         request.auth.uid == userId;
+        allow delete: if hasRole(companyId, 'admin');
+      }
+
+      // ── Marcas ──────────────────────────────────────────────
+      match /brands/{brandId} {
+        allow read:   if belongsToCompany(companyId);
+        allow write:  if isManager(companyId);
+      }
+
+      // ── Produtos ────────────────────────────────────────────
+      match /products/{productId} {
+        allow read:   if belongsToCompany(companyId);
+        allow create: if isManager(companyId);
+        allow update: if isManager(companyId);
+        allow delete: if hasRole(companyId, 'admin');
+      }
+
+      // ── Clientes ────────────────────────────────────────────
+      match /customers/{customerId} {
+        allow read:   if isSalesOrAbove(companyId);
+        allow write:  if isSalesOrAbove(companyId);
+        allow delete: if isManager(companyId);
+      }
+
+      // ── Orçamentos ──────────────────────────────────────────
+      match /quotes/{quoteId} {
+        // Vendedor só lê/edita seus próprios orçamentos
+        allow read: if belongsToCompany(companyId) &&
+                       (isManager(companyId) ||
+                        resource.data.sellerId == request.auth.uid);
+        allow create: if isSalesOrAbove(companyId) &&
+                         request.resource.data.sellerId == request.auth.uid;
+        allow update: if isSalesOrAbove(companyId) &&
+                         (isManager(companyId) ||
+                          resource.data.sellerId == request.auth.uid);
+        allow delete: if isManager(companyId);
+      }
+
+      // ── Itens do orçamento ──────────────────────────────────
+      match /quoteItems/{itemId} {
+        allow read:  if isSalesOrAbove(companyId);
+        allow write: if isSalesOrAbove(companyId);
+      }
+
+      // ── Vendas ──────────────────────────────────────────────
+      match /sales/{saleId} {
+        allow read: if belongsToCompany(companyId) &&
+                       (isManager(companyId) ||
+                        hasRole(companyId, 'financeiro') ||
+                        resource.data.sellerId == request.auth.uid);
+        allow create: if isSalesOrAbove(companyId);
+        allow update: if isManager(companyId) ||
+                         hasRole(companyId, 'financeiro');
+        allow delete: if hasRole(companyId, 'admin');
+      }
+
+      // ── Comprovantes de pagamento ───────────────────────────
+      match /paymentProofs/{proofId} {
+        allow read: if belongsToCompany(companyId) &&
+                       (isManager(companyId) || hasRole(companyId, 'financeiro') ||
+                        resource.data.uploadedBy == request.auth.uid);
+        allow create: if isSalesOrAbove(companyId);
+        allow update: if isManager(companyId) || hasRole(companyId, 'financeiro');
+        allow delete: if isManager(companyId);
+      }
+
+      // ── Estoque ─────────────────────────────────────────────
+      match /inventory/{itemId} {
+        allow read:   if belongsToCompany(companyId);
+        allow write:  if isManager(companyId);
+      }
+
+      // ── Movimentações de estoque ────────────────────────────
+      match /inventoryMovements/{movId} {
+        allow read:   if belongsToCompany(companyId);
+        allow create: if isSalesOrAbove(companyId);
+        allow update, delete: if isManager(companyId);
+      }
+
+      // ── Financeiro ──────────────────────────────────────────
+      match /financial/{docId} {
+        allow read:  if isManager(companyId) || hasRole(companyId, 'financeiro');
+        allow write: if isManager(companyId) || hasRole(companyId, 'financeiro');
+      }
+
+      // ── Comissões ───────────────────────────────────────────
+      match /commissions/{comId} {
+        allow read: if belongsToCompany(companyId) &&
+                       (isManager(companyId) ||
+                        resource.data.sellerId == request.auth.uid);
+        allow write: if isManager(companyId);
+      }
+
+      // ── Configurações da empresa ────────────────────────────
+      match /settings/{settingId} {
+        allow read:  if belongsToCompany(companyId);
+        allow write: if hasRole(companyId, 'admin');
+      }
+
+      // ── Logs de auditoria (somente leitura para admin) ──────
+      match /auditLogs/{logId} {
+        allow read:   if hasRole(companyId, 'admin');
+        allow create: if belongsToCompany(companyId);
+        allow update, delete: if false; // logs são imutáveis
+      }
+    }
+
+    // ── Coleção global de usuários ──────────────────────────────
+    // Usuário lê o próprio perfil; admin pode criar novos usuários
+    match /users/{userId} {
+      allow read:  if isAuth() && (request.auth.uid == userId || userDoc().role == 'admin');
+      allow create: if isAuth() && userDoc().role == 'admin';
+      allow update: if isAuth() && (request.auth.uid == userId || userDoc().role == 'admin');
+      allow delete: if false;
+    }
+
+    // Bloqueia tudo que não foi explicitamente permitido
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -775,187 +959,3 @@ function handleSearch(value) {
 </script>
 </body>
 </html>
-
-// ============================================================
-// COLCHOEIRO ERP — Regras de Segurança Firestore
-// Versão: Plano Gratuito (Spark) — Empresa Única
-// Firebase Storage: REMOVIDO
-//
-// Copie este conteúdo no console Firebase:
-// Firestore → Regras → Cole e publique
-// ============================================================
-
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-
-    // ── Funções auxiliares ────────────────────────────────────
-
-    // Verifica se o usuário está autenticado
-    function isAuth() {
-      return request.auth != null;
-    }
-
-    // Pega o perfil do usuário no Firestore
-    function userDoc() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-
-    // Verifica se o usuário pertence à empresa
-    function belongsToCompany(companyId) {
-      return isAuth() && userDoc().companyId == companyId;
-    }
-
-    // Verifica o perfil do usuário
-    function hasRole(companyId, role) {
-      return belongsToCompany(companyId) && userDoc().role == role;
-    }
-
-    // Admin ou Gerente da empresa
-    function isManager(companyId) {
-      return belongsToCompany(companyId) &&
-             userDoc().role in ['admin', 'gerente'];
-    }
-
-    // Qualquer perfil com acesso comercial
-    function isSalesOrAbove(companyId) {
-      return belongsToCompany(companyId) &&
-             userDoc().role in ['admin', 'gerente', 'vendedor'];
-    }
-
-    // ── Empresas (companies) ──────────────────────────────────
-    // Cada empresa é um "tenant" isolado
-    match /companies/{companyId} {
-      allow read: if belongsToCompany(companyId);
-      allow write: if hasRole(companyId, 'admin');
-
-      // ── Usuários da empresa ─────────────────────────────────
-      match /users/{userId} {
-        // Usuário lê próprio perfil; admin lê todos
-        allow read: if belongsToCompany(companyId) &&
-                       (request.auth.uid == userId || isManager(companyId));
-        allow create: if hasRole(companyId, 'admin');
-        allow update: if hasRole(companyId, 'admin') ||
-                         request.auth.uid == userId;
-        allow delete: if hasRole(companyId, 'admin');
-      }
-
-      // ── Marcas ──────────────────────────────────────────────
-      match /brands/{brandId} {
-        allow read:   if belongsToCompany(companyId);
-        allow write:  if isManager(companyId);
-      }
-
-      // ── Produtos ────────────────────────────────────────────
-      match /products/{productId} {
-        allow read:   if belongsToCompany(companyId);
-        allow create: if isManager(companyId);
-        allow update: if isManager(companyId);
-        allow delete: if hasRole(companyId, 'admin');
-      }
-
-      // ── Clientes ────────────────────────────────────────────
-      match /customers/{customerId} {
-        allow read:   if isSalesOrAbove(companyId);
-        allow write:  if isSalesOrAbove(companyId);
-        allow delete: if isManager(companyId);
-      }
-
-      // ── Orçamentos ──────────────────────────────────────────
-      match /quotes/{quoteId} {
-        // Vendedor só lê/edita seus próprios orçamentos
-        allow read: if belongsToCompany(companyId) &&
-                       (isManager(companyId) ||
-                        resource.data.sellerId == request.auth.uid);
-        allow create: if isSalesOrAbove(companyId) &&
-                         request.resource.data.sellerId == request.auth.uid;
-        allow update: if isSalesOrAbove(companyId) &&
-                         (isManager(companyId) ||
-                          resource.data.sellerId == request.auth.uid);
-        allow delete: if isManager(companyId);
-      }
-
-      // ── Itens do orçamento ──────────────────────────────────
-      match /quoteItems/{itemId} {
-        allow read:  if isSalesOrAbove(companyId);
-        allow write: if isSalesOrAbove(companyId);
-      }
-
-      // ── Vendas ──────────────────────────────────────────────
-      match /sales/{saleId} {
-        allow read: if belongsToCompany(companyId) &&
-                       (isManager(companyId) ||
-                        hasRole(companyId, 'financeiro') ||
-                        resource.data.sellerId == request.auth.uid);
-        allow create: if isSalesOrAbove(companyId);
-        allow update: if isManager(companyId) ||
-                         hasRole(companyId, 'financeiro');
-        allow delete: if hasRole(companyId, 'admin');
-      }
-
-      // ── Comprovantes de pagamento ───────────────────────────
-      match /paymentProofs/{proofId} {
-        allow read: if belongsToCompany(companyId) &&
-                       (isManager(companyId) || hasRole(companyId, 'financeiro') ||
-                        resource.data.uploadedBy == request.auth.uid);
-        allow create: if isSalesOrAbove(companyId);
-        allow update: if isManager(companyId) || hasRole(companyId, 'financeiro');
-        allow delete: if isManager(companyId);
-      }
-
-      // ── Estoque ─────────────────────────────────────────────
-      match /inventory/{itemId} {
-        allow read:   if belongsToCompany(companyId);
-        allow write:  if isManager(companyId);
-      }
-
-      // ── Movimentações de estoque ────────────────────────────
-      match /inventoryMovements/{movId} {
-        allow read:   if belongsToCompany(companyId);
-        allow create: if isSalesOrAbove(companyId);
-        allow update, delete: if isManager(companyId);
-      }
-
-      // ── Financeiro ──────────────────────────────────────────
-      match /financial/{docId} {
-        allow read:  if isManager(companyId) || hasRole(companyId, 'financeiro');
-        allow write: if isManager(companyId) || hasRole(companyId, 'financeiro');
-      }
-
-      // ── Comissões ───────────────────────────────────────────
-      match /commissions/{comId} {
-        allow read: if belongsToCompany(companyId) &&
-                       (isManager(companyId) ||
-                        resource.data.sellerId == request.auth.uid);
-        allow write: if isManager(companyId);
-      }
-
-      // ── Configurações da empresa ────────────────────────────
-      match /settings/{settingId} {
-        allow read:  if belongsToCompany(companyId);
-        allow write: if hasRole(companyId, 'admin');
-      }
-
-      // ── Logs de auditoria (somente leitura para admin) ──────
-      match /auditLogs/{logId} {
-        allow read:   if hasRole(companyId, 'admin');
-        allow create: if belongsToCompany(companyId);
-        allow update, delete: if false; // logs são imutáveis
-      }
-    }
-
-    // ── Coleção global de usuários ──────────────────────────────
-    // Usuário lê o próprio perfil; admin pode criar novos usuários
-    match /users/{userId} {
-      allow read:  if isAuth() && (request.auth.uid == userId || userDoc().role == 'admin');
-      allow create: if isAuth() && userDoc().role == 'admin';
-      allow update: if isAuth() && (request.auth.uid == userId || userDoc().role == 'admin');
-      allow delete: if false;
-    }
-
-    // Bloqueia tudo que não foi explicitamente permitido
-    match /{document=**} {
-      allow read, write: if false;
-    }
-  }
-}
