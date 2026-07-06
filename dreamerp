@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Colchoeiro ERP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="css/main.css"/>
+</head>
+<body>
+<div id="app">
+
+  <!-- ══ SIDEBAR ══ -->
+  <aside id="sidebar">
+    <!-- Logo -->
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">🛏</div>
+      <span class="sidebar-logo-text" id="company-name">Colchoeiro ERP</span>
+    </div>
+
+    <!-- Perfil -->
+    <div class="sidebar-profile">
+      <div class="avatar avatar-sm" id="profile-avatar" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">?</div>
+      <div class="sidebar-profile-info">
+        <div class="sidebar-profile-name" id="profile-name">Carregando...</div>
+        <div class="sidebar-profile-role" id="profile-role"></div>
+      </div>
+    </div>
+
+    <!-- Nav dinâmico -->
+    <nav id="sidebar-nav"></nav>
+
+    <!-- Botão IA -->
+    <button class="nav-item" id="ai-btn" onclick="loadModule('ai')"
+      style="margin:8px;width:calc(100% - 16px);background:rgba(99,102,241,.1);color:#a78bfa;border:1px solid rgba(99,102,241,.2)">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+      <span>Assistente IA</span>
+    </button>
+  </aside>
+
+  <!-- Overlay mobile -->
+  <div id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+  <!-- ══ MAIN ══ -->
+  <div id="main">
+
+    <!-- Topbar -->
+    <header id="topbar">
+      <button class="icon-btn" onclick="toggleSidebar()" aria-label="Menu">
+        <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+      </button>
+
+      <div class="topbar-search">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" id="global-search" placeholder="Buscar produtos, clientes, orçamentos..." oninput="handleSearch(this.value)">
+      </div>
+
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+        <!-- Notificações -->
+        <div style="position:relative">
+          <button class="icon-btn" onclick="loadModule('notifications')" aria-label="Notificações">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
+          </button>
+          <div id="notif-badge" style="display:none;position:absolute;top:-4px;right:-4px;width:16px;height:16px;background:#ef4444;border-radius:50%;font-size:9px;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800">0</div>
+        </div>
+
+        <!-- Avatar / logout -->
+        <div style="position:relative">
+          <div class="avatar avatar-md" id="topbar-avatar"
+            style="background:linear-gradient(135deg,#6366f1,#8b5cf6);cursor:pointer"
+            onclick="toggleUserMenu()">?</div>
+          <div id="user-menu" style="display:none;position:absolute;right:0;top:42px;background:#171924;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:6px;min-width:160px;z-index:500">
+            <button class="nav-item" style="width:100%" onclick="loadModule('profile')">
+              <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z"/></svg>
+              <span>Meu perfil</span>
+            </button>
+            <button class="nav-item" style="width:100%;color:#ef4444" onclick="Auth.logout()">
+              <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+              <span>Sair</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Content area -->
+    <main id="content">
+      <div style="display:flex;align-items:center;justify-content:center;height:100%">
+        <div class="spinner" style="width:40px;height:40px"></div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<!-- Firebase Storage removido — plano gratuito Spark -->
+
+<!-- Core JS -->
+<script src="js/firebase-config.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/auth.js"></script>
+
+<!-- Módulos -->
+<script src="modules/dashboard.js"></script>
+<script src="modules/products.js"></script>
+<script src="modules/brands.js"></script>
+<script src="modules/customers.js"></script>
+<script src="modules/quotes.js"></script>
+<script src="modules/sales.js"></script>
+<script src="modules/scanner.js"></script>
+<script src="modules/financial.js"></script>
+<script src="modules/commissions.js"></script>
+<script src="modules/settings.js"></script>
+<script src="modules/ai-assistant.js"></script>
+
+<script>
+// ── Definição da navegação por perfil ──────────────────────
+const NAV_CONFIG = {
+  admin: [
+    { section: 'Principal' },
+    { id:'dashboard',   label:'Dashboard',      icon:'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10' },
+    { id:'scanner',     label:'Venda / Scan',   icon:'M6 2H4a2 2 0 00-2 2v2M6 22H4a2 2 0 01-2-2v-2M18 2h2a2 2 0 012 2v2M18 22h2a2 2 0 002-2v-2M7 12h10', dot:true },
+    { section: 'Cadastros' },
+    { id:'products',    label:'Produtos',        icon:'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
+    { id:'brands',      label:'Marcas',          icon:'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z' },
+    { id:'customers',   label:'Clientes (CRM)',  icon:'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2 M23 21v-2a4 4 0 00-3-3.87 M16 3.13a4 4 0 010 7.75' },
+    { section: 'Comercial' },
+    { id:'quotes',      label:'Orçamentos',      icon:'M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z M14 2v6h6 M16 13H8 M16 17H8' },
+    { id:'sales',       label:'Vendas',          icon:'M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6' },
+    { section: 'Gestão' },
+    { id:'financial',   label:'Financeiro',      icon:'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10' },
+    { id:'commissions', label:'Comissões',       icon:'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915' },
+    { id:'settings',    label:'Configurações',   icon:'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0' },
+  ],
+  gerente: [
+    { section: 'Principal' },
+    { id:'dashboard',   label:'Dashboard',      icon:'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10' },
+    { id:'scanner',     label:'Venda / Scan',   icon:'M6 2H4a2 2 0 00-2 2v2M6 22H4a2 2 0 01-2-2v-2M18 2h2a2 2 0 012 2v2M18 22h2a2 2 0 002-2v-2M7 12h10', dot:true },
+    { section: 'Cadastros' },
+    { id:'products',    label:'Produtos',        icon:'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
+    { id:'customers',   label:'Clientes (CRM)',  icon:'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2' },
+    { section: 'Comercial' },
+    { id:'quotes',      label:'Orçamentos',      icon:'M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z' },
+    { id:'sales',       label:'Vendas',          icon:'M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6' },
+    { id:'commissions', label:'Comissões',       icon:'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674' },
+  ],
+  vendedor: [
+    { section: 'Vendas' },
+    { id:'my-dashboard',label:'Meu Dashboard',  icon:'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10' },
+    { id:'scanner',     label:'Escanear / Venda',icon:'M6 2H4a2 2 0 00-2 2v2M6 22H4a2 2 0 01-2-2v-2M18 2h2a2 2 0 012 2v2M18 22h2a2 2 0 002-2v-2M7 12h10', dot:true },
+    { id:'customers',   label:'Clientes',        icon:'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2' },
+    { id:'quotes',      label:'Meus Orçamentos', icon:'M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z' },
+  ],
+  financeiro: [
+    { section: 'Financeiro' },
+    { id:'dashboard',   label:'Dashboard',       icon:'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10' },
+    { id:'sales',       label:'Vendas',          icon:'M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6' },
+    { id:'financial',   label:'Financeiro',      icon:'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10' },
+  ],
+};
+
+// ── Estado da aplicação ────────────────────────────────────
+let currentModule = null;
+let currentProfile = null;
+
+// ── Inicialização ──────────────────────────────────────────
+Auth.init(
+  async (profile) => {
+    // Usuário autenticado
+    currentProfile = profile;
+    setupUI(profile);
+    const defaultModule = profile.role === 'vendedor' ? 'my-dashboard' : 'dashboard';
+    await loadModule(defaultModule);
+  },
+  () => {
+    // Não autenticado → redireciona para login
+    window.location.href = 'index.html';
+  }
+);
+
+// ── Montar interface com dados do perfil ───────────────────
+async function setupUI(profile) {
+  // Iniciais do avatar
+  const initials = profile.name.split(' ').map(n=>n[0]).slice(0,2).join('').toUpperCase();
+  document.getElementById('profile-avatar').textContent = initials;
+  document.getElementById('topbar-avatar').textContent  = initials;
+  document.getElementById('profile-name').textContent   = profile.name;
+  document.getElementById('profile-role').textContent   = profile.role;
+
+  // Busca nome/logo da empresa
+  try {
+    const snap = await db.collection('companies').doc(profile.companyId)
+                         .collection('settings').doc('general').get();
+    if (snap.exists) {
+      const s = snap.data();
+      document.getElementById('company-name').textContent = s.fantasyName || 'Colchoeiro ERP';
+      document.title = (s.fantasyName || 'Colchoeiro ERP') + ' — ERP';
+    }
+  } catch(e) { /* usa padrão */ }
+
+  // Montar nav
+  buildNav(profile.role);
+}
+
+// ── Montar nav baseado no perfil ───────────────────────────
+function buildNav(role) {
+  const items = NAV_CONFIG[role] || NAV_CONFIG.vendedor;
+  const nav   = document.getElementById('sidebar-nav');
+  nav.innerHTML = '';
+
+  items.forEach(item => {
+    if (item.section) {
+      const lbl = document.createElement('div');
+      lbl.className = 'nav-section-label';
+      lbl.textContent = item.section;
+      nav.appendChild(lbl);
+      return;
+    }
+    const btn = document.createElement('button');
+    btn.className = 'nav-item';
+    btn.setAttribute('data-module', item.id);
+    btn.onclick = () => loadModule(item.id);
+    btn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="${item.icon}"/>
+      </svg>
+      <span>${item.label}</span>
+      ${item.dot ? '<span class="nav-dot"></span>' : ''}`;
+    nav.appendChild(btn);
+  });
+}
+
+// ── Carregador de módulos ──────────────────────────────────
+async function loadModule(moduleId) {
+  currentModule = moduleId;
+
+  // Atualiza nav ativo
+  document.querySelectorAll('.nav-item[data-module]').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('data-module') === moduleId);
+  });
+
+  // Fecha sidebar no mobile
+  closeSidebar();
+
+  // Renderiza módulo
+  const content = document.getElementById('content');
+  content.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:200px"><div class="spinner"></div></div>';
+
+  try {
+    const modules = {
+      'dashboard':    () => Dashboard.render(content),
+      'my-dashboard': () => Dashboard.renderSeller(content),
+      'products':     () => Products.render(content),
+      'brands':       () => Brands.render(content),
+      'customers':    () => Customers.render(content),
+      'quotes':       () => Quotes.render(content),
+      'sales':        () => Sales.render(content),
+      'scanner':      () => Scanner.render(content),
+      'financial':    () => Financial.render(content),
+      'commissions':  () => Commissions.render(content),
+      'settings':     () => Settings.render(content),
+      'ai':           () => AIAssistant.render(content),
+    };
+
+    if (modules[moduleId]) {
+      await modules[moduleId]();
+    } else {
+      content.innerHTML = `<div class="fade-in" style="text-align:center;padding:60px"><p style="color:#64748b">Módulo "${moduleId}" não encontrado.</p></div>`;
+    }
+  } catch(err) {
+    console.error('Erro ao carregar módulo:', err);
+    content.innerHTML = `<div style="text-align:center;padding:60px;color:#ef4444">Erro ao carregar o módulo. Recarregue a página.</div>`;
+  }
+}
+
+// ── Sidebar toggle ─────────────────────────────────────────
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  if (window.innerWidth <= 768) {
+    sidebar.classList.toggle('open');
+  } else {
+    sidebar.classList.toggle('collapsed');
+  }
+}
+
+function closeSidebar() {
+  if (window.innerWidth <= 768) {
+    document.getElementById('sidebar').classList.remove('open');
+  }
+}
+
+// ── User menu ──────────────────────────────────────────────
+function toggleUserMenu() {
+  const m = document.getElementById('user-menu');
+  m.style.display = m.style.display === 'none' ? 'block' : 'none';
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('#topbar-avatar') && !e.target.closest('#user-menu')) {
+    document.getElementById('user-menu').style.display = 'none';
+  }
+});
+
+// ── Busca global ───────────────────────────────────────────
+let searchTimeout;
+function handleSearch(value) {
+  clearTimeout(searchTimeout);
+  if (!value.trim()) return;
+  searchTimeout = setTimeout(() => {
+    // Implementado no módulo de busca global
+    if (window.GlobalSearch) GlobalSearch.run(value);
+  }, 400);
+}
+</script>
+</body>
+</html>
+
+// ============================================================
+// COLCHOEIRO ERP — Regras de Segurança Firestore
+// Versão: Plano Gratuito (Spark) — Empresa Única
+// Firebase Storage: REMOVIDO
+//
+// Copie este conteúdo no console Firebase:
+// Firestore → Regras → Cole e publique
+// ============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Funções auxiliares ────────────────────────────────────
+
+    // Verifica se o usuário está autenticado
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // Pega o perfil do usuário no Firestore
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // Verifica se o usuário pertence à empresa
+    function belongsToCompany(companyId) {
+      return isAuth() && userDoc().companyId == companyId;
+    }
+
+    // Verifica o perfil do usuário
+    function hasRole(companyId, role) {
+      return belongsToCompany(companyId) && userDoc().role == role;
+    }
+
+    // Admin ou Gerente da empresa
+    function isManager(companyId) {
+      return belongsToCompany(companyId) &&
+             userDoc().role in ['admin', 'gerente'];
+    }
+
+    // Qualquer perfil com acesso comercial
+    function isSalesOrAbove(companyId) {
+      return belongsToCompany(companyId) &&
+             userDoc().role in ['admin', 'gerente', 'vendedor'];
+    }
+
+    // ── Empresas (companies) ──────────────────────────────────
+    // Cada empresa é um "tenant" isolado
+    match /companies/{companyId} {
+      allow read: if belongsToCompany(companyId);
+      allow write: if hasRole(companyId, 'admin');
+
+      // ── Usuários da empresa ─────────────────────────────────
+      match /users/{userId} {
+        // Usuário lê próprio perfil; admin lê todos
+        allow read: if belongsToCompany(companyId) &&
+                       (request.auth.uid == userId || isManager(companyId));
+        allow create: if hasRole(companyId, 'admin');
+        allow update: if hasRole(companyId, 'admin') ||
+                         request.auth.uid == userId;
+        allow delete: if hasRole(companyId, 'admin');
+      }
+
+      // ── Marcas ──────────────────────────────────────────────
+      match /brands/{brandId} {
+        allow read:   if belongsToCompany(companyId);
+        allow write:  if isManager(companyId);
+      }
+
+      // ── Produtos ────────────────────────────────────────────
+      match /products/{productId} {
+        allow read:   if belongsToCompany(companyId);
+        allow create: if isManager(companyId);
+        allow update: if isManager(companyId);
+        allow delete: if hasRole(companyId, 'admin');
+      }
+
+      // ── Clientes ────────────────────────────────────────────
+      match /customers/{customerId} {
+        allow read:   if isSalesOrAbove(companyId);
+        allow write:  if isSalesOrAbove(companyId);
+        allow delete: if isManager(companyId);
+      }
+
+      // ── Orçamentos ──────────────────────────────────────────
+      match /quotes/{quoteId} {
+        // Vendedor só lê/edita seus próprios orçamentos
+        allow read: if belongsToCompany(companyId) &&
+                       (isManager(companyId) ||
+                        resource.data.sellerId == request.auth.uid);
+        allow create: if isSalesOrAbove(companyId) &&
+                         request.resource.data.sellerId == request.auth.uid;
+        allow update: if isSalesOrAbove(companyId) &&
+                         (isManager(companyId) ||
+                          resource.data.sellerId == request.auth.uid);
+        allow delete: if isManager(companyId);
+      }
+
+      // ── Itens do orçamento ──────────────────────────────────
+      match /quoteItems/{itemId} {
+        allow read:  if isSalesOrAbove(companyId);
+        allow write: if isSalesOrAbove(companyId);
+      }
+
+      // ── Vendas ──────────────────────────────────────────────
+      match /sales/{saleId} {
+        allow read: if belongsToCompany(companyId) &&
+                       (isManager(companyId) ||
+                        hasRole(companyId, 'financeiro') ||
+                        resource.data.sellerId == request.auth.uid);
+        allow create: if isSalesOrAbove(companyId);
+        allow update: if isManager(companyId) ||
+                         hasRole(companyId, 'financeiro');
+        allow delete: if hasRole(companyId, 'admin');
+      }
+
+      // ── Comprovantes de pagamento ───────────────────────────
+      match /paymentProofs/{proofId} {
+        allow read: if belongsToCompany(companyId) &&
+                       (isManager(companyId) || hasRole(companyId, 'financeiro') ||
+                        resource.data.uploadedBy == request.auth.uid);
+        allow create: if isSalesOrAbove(companyId);
+        allow update: if isManager(companyId) || hasRole(companyId, 'financeiro');
+        allow delete: if isManager(companyId);
+      }
+
+      // ── Estoque ─────────────────────────────────────────────
+      match /inventory/{itemId} {
+        allow read:   if belongsToCompany(companyId);
+        allow write:  if isManager(companyId);
+      }
+
+      // ── Movimentações de estoque ────────────────────────────
+      match /inventoryMovements/{movId} {
+        allow read:   if belongsToCompany(companyId);
+        allow create: if isSalesOrAbove(companyId);
+        allow update, delete: if isManager(companyId);
+      }
+
+      // ── Financeiro ──────────────────────────────────────────
+      match /financial/{docId} {
+        allow read:  if isManager(companyId) || hasRole(companyId, 'financeiro');
+        allow write: if isManager(companyId) || hasRole(companyId, 'financeiro');
+      }
+
+      // ── Comissões ───────────────────────────────────────────
+      match /commissions/{comId} {
+        allow read: if belongsToCompany(companyId) &&
+                       (isManager(companyId) ||
+                        resource.data.sellerId == request.auth.uid);
+        allow write: if isManager(companyId);
+      }
+
+      // ── Configurações da empresa ────────────────────────────
+      match /settings/{settingId} {
+        allow read:  if belongsToCompany(companyId);
+        allow write: if hasRole(companyId, 'admin');
+      }
+
+      // ── Logs de auditoria (somente leitura para admin) ──────
+      match /auditLogs/{logId} {
+        allow read:   if hasRole(companyId, 'admin');
+        allow create: if belongsToCompany(companyId);
+        allow update, delete: if false; // logs são imutáveis
+      }
+    }
+
+    // ── Coleção global de usuários ──────────────────────────────
+    // Usuário lê o próprio perfil; admin pode criar novos usuários
+    match /users/{userId} {
+      allow read:  if isAuth() && (request.auth.uid == userId || userDoc().role == 'admin');
+      allow create: if isAuth() && userDoc().role == 'admin';
+      allow update: if isAuth() && (request.auth.uid == userId || userDoc().role == 'admin');
+      allow delete: if false;
+    }
+
+    // Bloqueia tudo que não foi explicitamente permitido
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Colchoeiro ERP — Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="css/main.css"/>
+  <style>
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+
+    .login-wrap {
+      width: 100%; max-width: 400px; padding: 24px;
+    }
+
+    .login-logo {
+      text-align: center; margin-bottom: 32px;
+    }
+    .login-logo-icon {
+      width: 56px; height: 56px; border-radius: 14px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      display: inline-flex; align-items: center;
+      justify-content: center; font-size: 26px;
+      margin-bottom: 12px;
+    }
+    .login-logo-name {
+      font-size: 26px; font-weight: 800; letter-spacing: -.04em;
+      background: linear-gradient(135deg, #6366f1, #a78bfa);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .login-logo-sub { font-size: 13px; color: #64748b; margin-top: 4px; }
+
+    .login-card {
+      background: #171924;
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: 18px;
+      padding: 28px;
+    }
+
+    .login-title { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
+    .login-sub   { font-size: 13px; color: #64748b; margin-bottom: 24px; }
+
+    .login-form { display: flex; flex-direction: column; gap: 14px; }
+
+    .login-label {
+      font-size: 11px; font-weight: 700; color: #64748b;
+      text-transform: uppercase; letter-spacing: .06em;
+      display: block; margin-bottom: 6px;
+    }
+
+    .login-input {
+      width: 100%; background: #1e2030;
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: 10px; padding: 11px 14px;
+      color: #e2e8f0; font-size: 15px; outline: none;
+      transition: border-color .2s;
+    }
+    .login-input:focus { border-color: #6366f1; }
+
+    .login-btn {
+      width: 100%; padding: 13px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      border: none; border-radius: 10px;
+      color: #fff; font-size: 15px; font-weight: 800;
+      cursor: pointer; margin-top: 4px;
+      transition: opacity .15s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .login-btn:hover   { opacity: .88; }
+    .login-btn:disabled{ opacity: .5; cursor: not-allowed; }
+
+    .login-forgot {
+      text-align: center; margin-top: 14px;
+      font-size: 13px; color: #64748b;
+    }
+    .login-forgot a { color: #6366f1; font-weight: 600; }
+
+    .login-error {
+      background: rgba(239,68,68,.1);
+      border: 1px solid rgba(239,68,68,.25);
+      border-radius: 8px; padding: 10px 14px;
+      font-size: 13px; color: #ef4444; display: none;
+    }
+
+    /* Tela de recuperação */
+    #reset-screen { display: none; }
+  </style>
+</head>
+<body>
+
+<div class="login-wrap">
+  <div class="login-logo">
+    <div class="login-logo-icon">🛏</div>
+    <div class="login-logo-name">Colchoeiro ERP</div>
+    <div class="login-logo-sub">Sistema de Gestão para Colchoarias</div>
+  </div>
+
+  <!-- ── Tela de login ── -->
+  <div id="login-screen">
+    <div class="login-card">
+      <div class="login-title">Bem-vindo de volta</div>
+      <div class="login-sub">Entre com seu e-mail e senha</div>
+
+      <div id="login-error" class="login-error"></div>
+
+      <div class="login-form">
+        <div>
+          <label class="login-label" for="email">E-mail</label>
+          <input class="login-input" type="email" id="email"
+            placeholder="seu@email.com.br" autocomplete="email">
+        </div>
+        <div>
+          <label class="login-label" for="password">Senha</label>
+          <input class="login-input" type="password" id="password"
+            placeholder="••••••••" autocomplete="current-password">
+        </div>
+
+        <button class="login-btn" id="login-btn" onclick="handleLogin()">
+          <span id="login-btn-text">Entrar</span>
+        </button>
+      </div>
+
+      <div class="login-forgot">
+        <a href="#" onclick="showReset(event)">Esqueci minha senha</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tela de recuperação de senha ── -->
+  <div id="reset-screen">
+    <div class="login-card">
+      <div class="login-title">Recuperar senha</div>
+      <div class="login-sub">Enviaremos um link para o seu e-mail</div>
+
+      <div id="reset-msg" class="login-error" style="display:none"></div>
+
+      <div class="login-form">
+        <div>
+          <label class="login-label" for="reset-email">E-mail</label>
+          <input class="login-input" type="email" id="reset-email" placeholder="seu@email.com.br">
+        </div>
+        <button class="login-btn" onclick="handleReset()">
+          Enviar link de recuperação
+        </button>
+      </div>
+
+      <div class="login-forgot">
+        <a href="#" onclick="showLogin(event)">← Voltar para o login</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase SDKs (versão compat para HTML puro) -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<!-- Firebase Storage removido — plano gratuito Spark -->
+<script src="js/firebase-config.js"></script>
+
+<script>
+  // Redireciona se já estiver logado
+  auth.onAuthStateChanged(async (user) => {
+    if (user) {
+      // Verifica se o usuário tem perfil válido
+      try {
+        const snap = await db.collection('users').doc(user.uid).get();
+        if (snap.exists && snap.data().active) {
+          window.location.href = 'dashboard.html';
+        }
+      } catch(e) { /* permanece na tela de login */ }
+    }
+  });
+
+  // Login
+  async function handleLogin() {
+    const email    = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const btn      = document.getElementById('login-btn');
+    const errEl    = document.getElementById('login-error');
+
+    if (!email || !password) {
+      showError('Preencha e-mail e senha.'); return;
+    }
+
+    btn.disabled = true;
+    document.getElementById('login-btn-text').textContent = 'Entrando...';
+    errEl.style.display = 'none';
+
+    try {
+      await auth.signInWithEmailAndPassword(email, password);
+      // onAuthStateChanged vai redirecionar
+    } catch (err) {
+      const msgs = {
+        'auth/user-not-found':    'Usuário não encontrado.',
+        'auth/wrong-password':    'Senha incorreta.',
+        'auth/too-many-requests': 'Muitas tentativas. Aguarde alguns minutos.',
+        'auth/invalid-email':     'E-mail inválido.',
+        'auth/user-disabled':     'Conta desativada. Fale com o administrador.',
+      };
+      showError(msgs[err.code] || 'Erro ao fazer login. Tente novamente.');
+      btn.disabled = false;
+      document.getElementById('login-btn-text').textContent = 'Entrar';
+    }
+  }
+
+  // Recuperação de senha
+  async function handleReset() {
+    const email = document.getElementById('reset-email').value.trim();
+    const msg   = document.getElementById('reset-msg');
+    if (!email) { showResetMsg('Digite seu e-mail.', true); return; }
+    try {
+      await auth.sendPasswordResetEmail(email);
+      showResetMsg('Link enviado! Verifique sua caixa de entrada.', false);
+    } catch {
+      showResetMsg('E-mail não encontrado.', true);
+    }
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('login-error');
+    el.textContent = msg; el.style.display = 'block';
+  }
+
+  function showResetMsg(msg, isError) {
+    const el = document.getElementById('reset-msg');
+    el.textContent = msg; el.style.display = 'block';
+    el.style.color = isError ? '#ef4444' : '#10b981';
+  }
+
+  function showReset(e)  { e.preventDefault(); document.getElementById('login-screen').style.display='none'; document.getElementById('reset-screen').style.display='block'; }
+  function showLogin(e)  { e.preventDefault(); document.getElementById('reset-screen').style.display='none'; document.getElementById('login-screen').style.display='block'; }
+
+  // Enter para logar
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && document.getElementById('login-screen').style.display !== 'none') handleLogin();
+  });
+</script>
+</body>
+</html>
+
+# 🛏️ Colchoeiro ERP — Sistema de Gestão para Colchoarias
+
+Sistema de gestão completo em HTML puro + Firebase + GitHub Pages.  
+**100% gratuito** usando o plano Spark do Firebase (sem Firebase Storage).
+
+---
+
+## 💰 Por que é gratuito?
+
+| Serviço | Plano Spark (Gratuito) | Utilizado |
+|---------|------------------------|-----------|
+| Firebase Authentication | Ilimitado | ✅ Sim |
+| Cloud Firestore | 1 GB de dados, 50k leituras/dia | ✅ Sim |
+| Firebase Storage | **Cobrado** | ❌ Removido |
+| GitHub Pages | Ilimitado | ✅ Sim |
+
+**O que mudou em relação à versão anterior:**
+- Upload de foto de produto → substituído por campo de URL externa
+- Upload de logo da empresa → substituído por campo de URL externa
+- Upload de comprovante de pagamento → removido; apenas metadados são salvos (operadora, NSU, valor, parcelas)
+
+---
+
+## 📁 Estrutura de arquivos
+
+```
+colchoeiro/
+├── index.html              ← Tela de login
+├── dashboard.html          ← App principal (carrega todos os módulos)
+├── firestore.rules         ← Regras de segurança do banco de dados
+├── css/
+│   └── main.css            ← Design system completo
+├── js/
+│   ├── firebase-config.js  ← Configuração do Firebase (sem Storage)
+│   ├── auth.js             ← Autenticação e controle de sessão
+│   └── ui.js               ← Utilitários de interface
+└── modules/
+    ├── dashboard.js        ← Dashboard admin + dashboard vendedor
+    ├── scanner.js          ← Leitor de código de barras + comprovantes
+    ├── products.js         ← Cadastro e gestão de produtos
+    ├── brands.js           ← Marcas e margens
+    ├── customers.js        ← CRM de clientes
+    ├── quotes.js           ← Orçamentos com envio por WhatsApp
+    ├── sales.js            ← Vendas + financeiro + comissões + configurações
+    └── ai-assistant.js     ← Assistente IA (Claude)
+```
+
+---
+
+## 🚀 Como publicar no GitHub Pages (passo a passo)
+
+### 1. Criar repositório no GitHub
+1. Acesse **github.com** e faça login
+2. Clique em **"+ New repository"**
+3. Nome: `colchoeiro-erp`
+4. Marque **Private** (privado)
+5. Clique em **"Create repository"**
+
+### 2. Fazer upload dos arquivos
+1. Na página do repositório, clique em **"uploading an existing file"**
+2. Arraste **todos os arquivos e pastas** do projeto
+3. Clique em **"Commit changes"**
+
+### 3. Ativar GitHub Pages
+1. No repositório, clique em **Settings** (engrenagem)
+2. No menu lateral, clique em **Pages**
+3. Em **Source**, selecione **Deploy from a branch**
+4. Branch: **main** | Folder: **/ (root)**
+5. Clique em **Save**
+6. Aguarde ~2 minutos → seu sistema estará em:  
+   `https://SEU-USUARIO.github.io/colchoeiro-erp/`
+
+---
+
+## 🔥 Configurar o Firebase
+
+### 1. Aplicar as regras de segurança do Firestore
+1. Acesse **console.firebase.google.com**
+2. Selecione seu projeto Firebase
+3. Clique em **Firestore Database → Regras**
+4. Apague tudo e cole o conteúdo do arquivo `firestore.rules`
+5. Clique em **Publicar**
+
+> ⚠️ **Não é necessário configurar Firebase Storage** — ele foi removido desta versão.
+
+### 2. Habilitar autenticação por e-mail
+1. No Firebase, clique em **Authentication → Sign-in method**
+2. Clique em **E-mail/senha**
+3. Ative o primeiro interruptor
+4. Clique em **Salvar**
+
+### 3. Criar o primeiro usuário administrador
+1. No Firebase, clique em **Authentication → Usuários**
+2. Clique em **Adicionar usuário**
+3. Digite o e-mail e senha do admin
+4. Copie o **UID** gerado (ex: `abc123...`)
+
+### 4. Criar o documento do usuário no Firestore
+1. No Firebase, clique em **Firestore Database**
+2. Clique em **Iniciar coleção** → nome: `users`
+3. ID do documento: cole o **UID** copiado acima
+4. Adicione os campos:
+   - `name` (string): `Seu Nome Completo`
+   - `email` (string): `seu@email.com`
+   - `role` (string): `admin`
+   - `companyId` (string): `empresa-001`
+   - `active` (boolean): `true`
+
+### 5. Criar o documento da empresa
+1. No Firestore, clique em **Iniciar coleção** → nome: `companies`
+2. ID do documento: `empresa-001` (mesmo companyId acima)
+3. Clique em **Salvar**
+4. Dentro de `companies/empresa-001`, crie a subcoleção `settings`
+5. Documento com ID `general`, campo `fantasyName` (string): nome da empresa
+
+### 6. Atualizar as chaves do Firebase no projeto
+1. Abra o arquivo `js/firebase-config.js`
+2. Substitua os valores do objeto `firebaseConfig` pelas chaves do **seu** projeto Firebase
+3. As chaves estão em: Firebase Console → Configurações do projeto → Seus apps → SDK
+
+---
+
+## 👥 Adicionar vendedores
+
+Para cada novo vendedor:
+1. No Firebase, clique em **Authentication → Usuários → Adicionar usuário**
+2. Digite o e-mail e senha do vendedor
+3. Copie o **UID** gerado
+4. No Firestore, crie o documento `/users/{uid}` com os campos:
+   - `name` (string): Nome do vendedor
+   - `email` (string): email@exemplo.com
+   - `role` (string): `vendedor` (ou `gerente` / `financeiro`)
+   - `companyId` (string): `empresa-001`
+   - `active` (boolean): `true`
+
+> 💡 Alternativamente, o próprio admin pode criar usuários diretamente pelo sistema em **Configurações → Usuários → Convidar usuário**.
+
+---
+
+## 👥 Perfis de acesso
+
+| Perfil | Acesso |
+|--------|--------|
+| **admin** | Tudo, incluindo configurações, usuários e exclusão |
+| **gerente** | Dashboard geral, produtos, clientes, orçamentos, vendas, comissões |
+| **vendedor** | Seu dashboard, scanner, clientes, seus orçamentos |
+| **financeiro** | Dashboard, vendas, financeiro |
+
+---
+
+## 📱 Leitor de código de barras (mobile)
+
+O módulo Scanner usa a biblioteca **Quagga2** que é carregada automaticamente.
+
+- **Câmera traseira** do celular para leitura em tempo real
+- **Lanterna** integrada para ambientes escuros
+- **Leitores USB/Bluetooth** funcionam como teclado (plug and play)
+- **Modo Venda**: escaneia → monta carrinho → finaliza → registra comprovante
+- **Modo Cadastro**: escaneia → preenche formulário → salva no Firebase
+
+---
+
+## 🖼️ Como adicionar fotos de produtos (sem Storage)
+
+Como o Firebase Storage foi removido, as fotos são referenciadas por URL:
+
+1. Hospede a imagem em um serviço gratuito:
+   - **Google Drive**: faça upload, clique com botão direito → "Obter link" → altere para acesso público
+   - **Imgur**: faça upload em imgur.com → copie o link direto da imagem
+   - **ImgBB**: faça upload em imgbb.com → copie o link direto
+2. No cadastro do produto, cole a URL no campo **"URL da foto do produto"**
+
+---
+
+## ⚠️ Sobre a segurança das chaves Firebase
+
+As chaves do Firebase (apiKey, projectId, etc.) são **públicas por design** —
+o Google as projeta para ficarem no front-end. A segurança real vem das
+**Security Rules** configuradas no passo acima.
+
+Para produção, ative também:
+- **App Check** no Firebase (bloqueia acessos fora do seu domínio)
+- **Domínios autorizados** em Authentication → Settings → Authorized domains
+
+---
+
+## 🤖 Assistente IA
+
+O módulo usa a API da Anthropic (Claude). Para ativar em produção:
+1. Crie uma conta em **console.anthropic.com**
+2. Gere uma API Key
+3. Crie uma **Cloud Function** ou **proxy seguro** para não expor a chave no front-end
+4. Atualize a URL do fetch no arquivo `modules/ai-assistant.js`
+
+---
+
+## 📊 Módulos implementados
+
+- ✅ Login / Logout / Recuperação de senha
+- ✅ Dashboard Admin (métricas, ranking, estoque crítico)
+- ✅ Dashboard Vendedor (suas vendas, produtos esquecidos, meta)
+- ✅ Scanner com câmera real (Quagga2)
+- ✅ Comprovantes de pagamento (metadados: operadora, NSU, valor, parcelas)
+- ✅ Produtos (CRUD completo com código de barras + URL de foto)
+- ✅ Marcas (margem e desconto máximo)
+- ✅ Clientes / CRM
+- ✅ Orçamentos (com envio por WhatsApp)
+- ✅ Vendas (com histórico e comprovantes)
+- ✅ Financeiro (receitas, comprovantes, formas de pagamento)
+- ✅ Comissões (percentual, meta, ranking)
+- ✅ Configurações (empresa, URL do logo, usuários, cores)
+- ✅ Assistente IA (Claude)
+- ✅ Controle de acesso por perfil (admin/gerente/vendedor/financeiro)
+- ✅ Responsivo (desktop, tablet e mobile)
+- ✅ **100% gratuito** no plano Spark do Firebase
