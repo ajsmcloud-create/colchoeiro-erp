@@ -1,3 +1,323 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Colchoeiro ERP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="css/main.css"/>
+</head>
+<body>
+<div id="app">
+
+  <!-- ══ SIDEBAR ══ -->
+  <aside id="sidebar">
+    <!-- Logo -->
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">🛏</div>
+      <span class="sidebar-logo-text" id="company-name">Colchoeiro ERP</span>
+    </div>
+
+    <!-- Perfil -->
+    <div class="sidebar-profile">
+      <div class="avatar avatar-sm" id="profile-avatar" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">?</div>
+      <div class="sidebar-profile-info">
+        <div class="sidebar-profile-name" id="profile-name">Carregando...</div>
+        <div class="sidebar-profile-role" id="profile-role"></div>
+      </div>
+    </div>
+
+    <!-- Nav dinâmico -->
+    <nav id="sidebar-nav"></nav>
+
+    <!-- Botão IA -->
+    <button class="nav-item" id="ai-btn" onclick="loadModule('ai')"
+      style="margin:8px;width:calc(100% - 16px);background:rgba(99,102,241,.1);color:#a78bfa;border:1px solid rgba(99,102,241,.2)">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+      <span>Assistente IA</span>
+    </button>
+  </aside>
+
+  <!-- Overlay mobile -->
+  <div id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+  <!-- ══ MAIN ══ -->
+  <div id="main">
+
+    <!-- Topbar -->
+    <header id="topbar">
+      <button class="icon-btn" onclick="toggleSidebar()" aria-label="Menu">
+        <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+      </button>
+
+      <div class="topbar-search">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" id="global-search" placeholder="Buscar produtos, clientes, orçamentos..." oninput="handleSearch(this.value)">
+      </div>
+
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+        <!-- Notificações -->
+        <div style="position:relative">
+          <button class="icon-btn" onclick="loadModule('notifications')" aria-label="Notificações">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
+          </button>
+          <div id="notif-badge" style="display:none;position:absolute;top:-4px;right:-4px;width:16px;height:16px;background:#ef4444;border-radius:50%;font-size:9px;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800">0</div>
+        </div>
+
+        <!-- Avatar / logout -->
+        <div style="position:relative">
+          <div class="avatar avatar-md" id="topbar-avatar"
+            style="background:linear-gradient(135deg,#6366f1,#8b5cf6);cursor:pointer"
+            onclick="toggleUserMenu()">?</div>
+          <div id="user-menu" style="display:none;position:absolute;right:0;top:42px;background:#171924;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:6px;min-width:160px;z-index:500">
+            <button class="nav-item" style="width:100%" onclick="loadModule('profile')">
+              <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z"/></svg>
+              <span>Meu perfil</span>
+            </button>
+            <button class="nav-item" style="width:100%;color:#ef4444" onclick="Auth.logout()">
+              <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+              <span>Sair</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Content area -->
+    <main id="content">
+      <div style="display:flex;align-items:center;justify-content:center;height:100%">
+        <div class="spinner" style="width:40px;height:40px"></div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<!-- Firebase Storage removido — plano gratuito Spark -->
+
+<!-- Core JS -->
+<script src="js/firebase-config.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/auth.js"></script>
+
+<!-- Módulos -->
+<script src="modules/dashboard.js"></script>
+<script src="modules/products.js"></script>
+<script src="modules/brands.js"></script>
+<script src="modules/customers.js"></script>
+<script src="modules/quotes.js"></script>
+<script src="modules/sales.js"></script>
+<script src="modules/scanner.js"></script>
+<script src="modules/financial.js"></script>
+<script src="modules/commissions.js"></script>
+<script src="modules/settings.js"></script>
+<script src="modules/ai-assistant.js"></script>
+
+<script>
+// ── Definição da navegação por perfil ──────────────────────
+const NAV_CONFIG = {
+  admin: [
+    { section: 'Principal' },
+    { id:'dashboard',   label:'Dashboard',      icon:'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10' },
+    { id:'scanner',     label:'Venda / Scan',   icon:'M6 2H4a2 2 0 00-2 2v2M6 22H4a2 2 0 01-2-2v-2M18 2h2a2 2 0 012 2v2M18 22h2a2 2 0 002-2v-2M7 12h10', dot:true },
+    { section: 'Cadastros' },
+    { id:'products',    label:'Produtos',        icon:'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
+    { id:'brands',      label:'Marcas',          icon:'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z' },
+    { id:'customers',   label:'Clientes (CRM)',  icon:'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2 M23 21v-2a4 4 0 00-3-3.87 M16 3.13a4 4 0 010 7.75' },
+    { section: 'Comercial' },
+    { id:'quotes',      label:'Orçamentos',      icon:'M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z M14 2v6h6 M16 13H8 M16 17H8' },
+    { id:'sales',       label:'Vendas',          icon:'M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6' },
+    { section: 'Gestão' },
+    { id:'financial',   label:'Financeiro',      icon:'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10' },
+    { id:'commissions', label:'Comissões',       icon:'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915' },
+    { id:'settings',    label:'Configurações',   icon:'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0' },
+  ],
+  gerente: [
+    { section: 'Principal' },
+    { id:'dashboard',   label:'Dashboard',      icon:'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10' },
+    { id:'scanner',     label:'Venda / Scan',   icon:'M6 2H4a2 2 0 00-2 2v2M6 22H4a2 2 0 01-2-2v-2M18 2h2a2 2 0 012 2v2M18 22h2a2 2 0 002-2v-2M7 12h10', dot:true },
+    { section: 'Cadastros' },
+    { id:'products',    label:'Produtos',        icon:'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
+    { id:'customers',   label:'Clientes (CRM)',  icon:'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2' },
+    { section: 'Comercial' },
+    { id:'quotes',      label:'Orçamentos',      icon:'M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z' },
+    { id:'sales',       label:'Vendas',          icon:'M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6' },
+    { id:'commissions', label:'Comissões',       icon:'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674' },
+  ],
+  vendedor: [
+    { section: 'Vendas' },
+    { id:'my-dashboard',label:'Meu Dashboard',  icon:'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10' },
+    { id:'scanner',     label:'Escanear / Venda',icon:'M6 2H4a2 2 0 00-2 2v2M6 22H4a2 2 0 01-2-2v-2M18 2h2a2 2 0 012 2v2M18 22h2a2 2 0 002-2v-2M7 12h10', dot:true },
+    { id:'customers',   label:'Clientes',        icon:'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2' },
+    { id:'quotes',      label:'Meus Orçamentos', icon:'M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z' },
+  ],
+  financeiro: [
+    { section: 'Financeiro' },
+    { id:'dashboard',   label:'Dashboard',       icon:'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10' },
+    { id:'sales',       label:'Vendas',          icon:'M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6' },
+    { id:'financial',   label:'Financeiro',      icon:'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10' },
+  ],
+};
+
+// ── Estado da aplicação ────────────────────────────────────
+let currentModule = null;
+let currentProfile = null;
+
+// ── Inicialização ──────────────────────────────────────────
+Auth.init(
+  async (profile) => {
+    // Usuário autenticado
+    currentProfile = profile;
+    setupUI(profile);
+    const defaultModule = profile.role === 'vendedor' ? 'my-dashboard' : 'dashboard';
+    await loadModule(defaultModule);
+  },
+  () => {
+    // Não autenticado → redireciona para login
+    window.location.href = 'index.html';
+  }
+);
+
+// ── Montar interface com dados do perfil ───────────────────
+async function setupUI(profile) {
+  // Iniciais do avatar
+  const initials = profile.name.split(' ').map(n=>n[0]).slice(0,2).join('').toUpperCase();
+  document.getElementById('profile-avatar').textContent = initials;
+  document.getElementById('topbar-avatar').textContent  = initials;
+  document.getElementById('profile-name').textContent   = profile.name;
+  document.getElementById('profile-role').textContent   = profile.role;
+
+  // Busca nome/logo da empresa
+  try {
+    const snap = await db.collection('companies').doc(profile.companyId)
+                         .collection('settings').doc('general').get();
+    if (snap.exists) {
+      const s = snap.data();
+      document.getElementById('company-name').textContent = s.fantasyName || 'Colchoeiro ERP';
+      document.title = (s.fantasyName || 'Colchoeiro ERP') + ' — ERP';
+    }
+  } catch(e) { /* usa padrão */ }
+
+  // Montar nav
+  buildNav(profile.role);
+}
+
+// ── Montar nav baseado no perfil ───────────────────────────
+function buildNav(role) {
+  const items = NAV_CONFIG[role] || NAV_CONFIG.vendedor;
+  const nav   = document.getElementById('sidebar-nav');
+  nav.innerHTML = '';
+
+  items.forEach(item => {
+    if (item.section) {
+      const lbl = document.createElement('div');
+      lbl.className = 'nav-section-label';
+      lbl.textContent = item.section;
+      nav.appendChild(lbl);
+      return;
+    }
+    const btn = document.createElement('button');
+    btn.className = 'nav-item';
+    btn.setAttribute('data-module', item.id);
+    btn.onclick = () => loadModule(item.id);
+    btn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="${item.icon}"/>
+      </svg>
+      <span>${item.label}</span>
+      ${item.dot ? '<span class="nav-dot"></span>' : ''}`;
+    nav.appendChild(btn);
+  });
+}
+
+// ── Carregador de módulos ──────────────────────────────────
+async function loadModule(moduleId) {
+  currentModule = moduleId;
+
+  // Atualiza nav ativo
+  document.querySelectorAll('.nav-item[data-module]').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('data-module') === moduleId);
+  });
+
+  // Fecha sidebar no mobile
+  closeSidebar();
+
+  // Renderiza módulo
+  const content = document.getElementById('content');
+  content.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:200px"><div class="spinner"></div></div>';
+
+  try {
+    const modules = {
+      'dashboard':    () => Dashboard.render(content),
+      'my-dashboard': () => Dashboard.renderSeller(content),
+      'products':     () => Products.render(content),
+      'brands':       () => Brands.render(content),
+      'customers':    () => Customers.render(content),
+      'quotes':       () => Quotes.render(content),
+      'sales':        () => Sales.render(content),
+      'scanner':      () => Scanner.render(content),
+      'financial':    () => Financial.render(content),
+      'commissions':  () => Commissions.render(content),
+      'settings':     () => Settings.render(content),
+      'ai':           () => AIAssistant.render(content),
+    };
+
+    if (modules[moduleId]) {
+      await modules[moduleId]();
+    } else {
+      content.innerHTML = `<div class="fade-in" style="text-align:center;padding:60px"><p style="color:#64748b">Módulo "${moduleId}" não encontrado.</p></div>`;
+    }
+  } catch(err) {
+    console.error('Erro ao carregar módulo:', err);
+    content.innerHTML = `<div style="text-align:center;padding:60px;color:#ef4444">Erro ao carregar o módulo. Recarregue a página.</div>`;
+  }
+}
+
+// ── Sidebar toggle ─────────────────────────────────────────
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  if (window.innerWidth <= 768) {
+    sidebar.classList.toggle('open');
+  } else {
+    sidebar.classList.toggle('collapsed');
+  }
+}
+
+function closeSidebar() {
+  if (window.innerWidth <= 768) {
+    document.getElementById('sidebar').classList.remove('open');
+  }
+}
+
+// ── User menu ──────────────────────────────────────────────
+function toggleUserMenu() {
+  const m = document.getElementById('user-menu');
+  m.style.display = m.style.display === 'none' ? 'block' : 'none';
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('#topbar-avatar') && !e.target.closest('#user-menu')) {
+    document.getElementById('user-menu').style.display = 'none';
+  }
+});
+
+// ── Busca global ───────────────────────────────────────────
+let searchTimeout;
+function handleSearch(value) {
+  clearTimeout(searchTimeout);
+  if (!value.trim()) return;
+  searchTimeout = setTimeout(() => {
+    // Implementado no módulo de busca global
+    if (window.GlobalSearch) GlobalSearch.run(value);
+  }, 400);
+}
+</script>
+</body>
+</html>
+
 // ============================================================
 // COLCHOEIRO ERP — Regras de Segurança Firestore
 // Versão: Plano Gratuito (Spark) — Empresa Única
@@ -639,323 +959,3 @@ O módulo usa a API da Anthropic (Claude). Para ativar em produção:
 - ✅ Controle de acesso por perfil (admin/gerente/vendedor/financeiro)
 - ✅ Responsivo (desktop, tablet e mobile)
 - ✅ **100% gratuito** no plano Spark do Firebase
-
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Colchoeiro ERP</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="css/main.css"/>
-</head>
-<body>
-<div id="app">
-
-  <!-- ══ SIDEBAR ══ -->
-  <aside id="sidebar">
-    <!-- Logo -->
-    <div class="sidebar-logo">
-      <div class="sidebar-logo-icon">🛏</div>
-      <span class="sidebar-logo-text" id="company-name">Colchoeiro ERP</span>
-    </div>
-
-    <!-- Perfil -->
-    <div class="sidebar-profile">
-      <div class="avatar avatar-sm" id="profile-avatar" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">?</div>
-      <div class="sidebar-profile-info">
-        <div class="sidebar-profile-name" id="profile-name">Carregando...</div>
-        <div class="sidebar-profile-role" id="profile-role"></div>
-      </div>
-    </div>
-
-    <!-- Nav dinâmico -->
-    <nav id="sidebar-nav"></nav>
-
-    <!-- Botão IA -->
-    <button class="nav-item" id="ai-btn" onclick="loadModule('ai')"
-      style="margin:8px;width:calc(100% - 16px);background:rgba(99,102,241,.1);color:#a78bfa;border:1px solid rgba(99,102,241,.2)">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
-      <span>Assistente IA</span>
-    </button>
-  </aside>
-
-  <!-- Overlay mobile -->
-  <div id="sidebar-overlay" onclick="closeSidebar()"></div>
-
-  <!-- ══ MAIN ══ -->
-  <div id="main">
-
-    <!-- Topbar -->
-    <header id="topbar">
-      <button class="icon-btn" onclick="toggleSidebar()" aria-label="Menu">
-        <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
-      </button>
-
-      <div class="topbar-search">
-        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        <input type="text" id="global-search" placeholder="Buscar produtos, clientes, orçamentos..." oninput="handleSearch(this.value)">
-      </div>
-
-      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
-        <!-- Notificações -->
-        <div style="position:relative">
-          <button class="icon-btn" onclick="loadModule('notifications')" aria-label="Notificações">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
-          </button>
-          <div id="notif-badge" style="display:none;position:absolute;top:-4px;right:-4px;width:16px;height:16px;background:#ef4444;border-radius:50%;font-size:9px;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800">0</div>
-        </div>
-
-        <!-- Avatar / logout -->
-        <div style="position:relative">
-          <div class="avatar avatar-md" id="topbar-avatar"
-            style="background:linear-gradient(135deg,#6366f1,#8b5cf6);cursor:pointer"
-            onclick="toggleUserMenu()">?</div>
-          <div id="user-menu" style="display:none;position:absolute;right:0;top:42px;background:#171924;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:6px;min-width:160px;z-index:500">
-            <button class="nav-item" style="width:100%" onclick="loadModule('profile')">
-              <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z"/></svg>
-              <span>Meu perfil</span>
-            </button>
-            <button class="nav-item" style="width:100%;color:#ef4444" onclick="Auth.logout()">
-              <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
-              <span>Sair</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </header>
-
-    <!-- Content area -->
-    <main id="content">
-      <div style="display:flex;align-items:center;justify-content:center;height:100%">
-        <div class="spinner" style="width:40px;height:40px"></div>
-      </div>
-    </main>
-  </div>
-</div>
-
-<!-- Firebase SDKs -->
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-<!-- Firebase Storage removido — plano gratuito Spark -->
-
-<!-- Core JS -->
-<script src="js/firebase-config.js"></script>
-<script src="js/ui.js"></script>
-<script src="js/auth.js"></script>
-
-<!-- Módulos -->
-<script src="modules/dashboard.js"></script>
-<script src="modules/products.js"></script>
-<script src="modules/brands.js"></script>
-<script src="modules/customers.js"></script>
-<script src="modules/quotes.js"></script>
-<script src="modules/sales.js"></script>
-<script src="modules/scanner.js"></script>
-<script src="modules/financial.js"></script>
-<script src="modules/commissions.js"></script>
-<script src="modules/settings.js"></script>
-<script src="modules/ai-assistant.js"></script>
-
-<script>
-// ── Definição da navegação por perfil ──────────────────────
-const NAV_CONFIG = {
-  admin: [
-    { section: 'Principal' },
-    { id:'dashboard',   label:'Dashboard',      icon:'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10' },
-    { id:'scanner',     label:'Venda / Scan',   icon:'M6 2H4a2 2 0 00-2 2v2M6 22H4a2 2 0 01-2-2v-2M18 2h2a2 2 0 012 2v2M18 22h2a2 2 0 002-2v-2M7 12h10', dot:true },
-    { section: 'Cadastros' },
-    { id:'products',    label:'Produtos',        icon:'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
-    { id:'brands',      label:'Marcas',          icon:'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z' },
-    { id:'customers',   label:'Clientes (CRM)',  icon:'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2 M23 21v-2a4 4 0 00-3-3.87 M16 3.13a4 4 0 010 7.75' },
-    { section: 'Comercial' },
-    { id:'quotes',      label:'Orçamentos',      icon:'M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z M14 2v6h6 M16 13H8 M16 17H8' },
-    { id:'sales',       label:'Vendas',          icon:'M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6' },
-    { section: 'Gestão' },
-    { id:'financial',   label:'Financeiro',      icon:'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10' },
-    { id:'commissions', label:'Comissões',       icon:'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915' },
-    { id:'settings',    label:'Configurações',   icon:'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0' },
-  ],
-  gerente: [
-    { section: 'Principal' },
-    { id:'dashboard',   label:'Dashboard',      icon:'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10' },
-    { id:'scanner',     label:'Venda / Scan',   icon:'M6 2H4a2 2 0 00-2 2v2M6 22H4a2 2 0 01-2-2v-2M18 2h2a2 2 0 012 2v2M18 22h2a2 2 0 002-2v-2M7 12h10', dot:true },
-    { section: 'Cadastros' },
-    { id:'products',    label:'Produtos',        icon:'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
-    { id:'customers',   label:'Clientes (CRM)',  icon:'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2' },
-    { section: 'Comercial' },
-    { id:'quotes',      label:'Orçamentos',      icon:'M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z' },
-    { id:'sales',       label:'Vendas',          icon:'M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6' },
-    { id:'commissions', label:'Comissões',       icon:'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674' },
-  ],
-  vendedor: [
-    { section: 'Vendas' },
-    { id:'my-dashboard',label:'Meu Dashboard',  icon:'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10' },
-    { id:'scanner',     label:'Escanear / Venda',icon:'M6 2H4a2 2 0 00-2 2v2M6 22H4a2 2 0 01-2-2v-2M18 2h2a2 2 0 012 2v2M18 22h2a2 2 0 002-2v-2M7 12h10', dot:true },
-    { id:'customers',   label:'Clientes',        icon:'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2' },
-    { id:'quotes',      label:'Meus Orçamentos', icon:'M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z' },
-  ],
-  financeiro: [
-    { section: 'Financeiro' },
-    { id:'dashboard',   label:'Dashboard',       icon:'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10' },
-    { id:'sales',       label:'Vendas',          icon:'M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6' },
-    { id:'financial',   label:'Financeiro',      icon:'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10' },
-  ],
-};
-
-// ── Estado da aplicação ────────────────────────────────────
-let currentModule = null;
-let currentProfile = null;
-
-// ── Inicialização ──────────────────────────────────────────
-Auth.init(
-  async (profile) => {
-    // Usuário autenticado
-    currentProfile = profile;
-    setupUI(profile);
-    const defaultModule = profile.role === 'vendedor' ? 'my-dashboard' : 'dashboard';
-    await loadModule(defaultModule);
-  },
-  () => {
-    // Não autenticado → redireciona para login
-    window.location.href = 'index.html';
-  }
-);
-
-// ── Montar interface com dados do perfil ───────────────────
-async function setupUI(profile) {
-  // Iniciais do avatar
-  const initials = profile.name.split(' ').map(n=>n[0]).slice(0,2).join('').toUpperCase();
-  document.getElementById('profile-avatar').textContent = initials;
-  document.getElementById('topbar-avatar').textContent  = initials;
-  document.getElementById('profile-name').textContent   = profile.name;
-  document.getElementById('profile-role').textContent   = profile.role;
-
-  // Busca nome/logo da empresa
-  try {
-    const snap = await db.collection('companies').doc(profile.companyId)
-                         .collection('settings').doc('general').get();
-    if (snap.exists) {
-      const s = snap.data();
-      document.getElementById('company-name').textContent = s.fantasyName || 'Colchoeiro ERP';
-      document.title = (s.fantasyName || 'Colchoeiro ERP') + ' — ERP';
-    }
-  } catch(e) { /* usa padrão */ }
-
-  // Montar nav
-  buildNav(profile.role);
-}
-
-// ── Montar nav baseado no perfil ───────────────────────────
-function buildNav(role) {
-  const items = NAV_CONFIG[role] || NAV_CONFIG.vendedor;
-  const nav   = document.getElementById('sidebar-nav');
-  nav.innerHTML = '';
-
-  items.forEach(item => {
-    if (item.section) {
-      const lbl = document.createElement('div');
-      lbl.className = 'nav-section-label';
-      lbl.textContent = item.section;
-      nav.appendChild(lbl);
-      return;
-    }
-    const btn = document.createElement('button');
-    btn.className = 'nav-item';
-    btn.setAttribute('data-module', item.id);
-    btn.onclick = () => loadModule(item.id);
-    btn.innerHTML = `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <path d="${item.icon}"/>
-      </svg>
-      <span>${item.label}</span>
-      ${item.dot ? '<span class="nav-dot"></span>' : ''}`;
-    nav.appendChild(btn);
-  });
-}
-
-// ── Carregador de módulos ──────────────────────────────────
-async function loadModule(moduleId) {
-  currentModule = moduleId;
-
-  // Atualiza nav ativo
-  document.querySelectorAll('.nav-item[data-module]').forEach(b => {
-    b.classList.toggle('active', b.getAttribute('data-module') === moduleId);
-  });
-
-  // Fecha sidebar no mobile
-  closeSidebar();
-
-  // Renderiza módulo
-  const content = document.getElementById('content');
-  content.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:200px"><div class="spinner"></div></div>';
-
-  try {
-    const modules = {
-      'dashboard':    () => Dashboard.render(content),
-      'my-dashboard': () => Dashboard.renderSeller(content),
-      'products':     () => Products.render(content),
-      'brands':       () => Brands.render(content),
-      'customers':    () => Customers.render(content),
-      'quotes':       () => Quotes.render(content),
-      'sales':        () => Sales.render(content),
-      'scanner':      () => Scanner.render(content),
-      'financial':    () => Financial.render(content),
-      'commissions':  () => Commissions.render(content),
-      'settings':     () => Settings.render(content),
-      'ai':           () => AIAssistant.render(content),
-    };
-
-    if (modules[moduleId]) {
-      await modules[moduleId]();
-    } else {
-      content.innerHTML = `<div class="fade-in" style="text-align:center;padding:60px"><p style="color:#64748b">Módulo "${moduleId}" não encontrado.</p></div>`;
-    }
-  } catch(err) {
-    console.error('Erro ao carregar módulo:', err);
-    content.innerHTML = `<div style="text-align:center;padding:60px;color:#ef4444">Erro ao carregar o módulo. Recarregue a página.</div>`;
-  }
-}
-
-// ── Sidebar toggle ─────────────────────────────────────────
-function toggleSidebar() {
-  const sidebar = document.getElementById('sidebar');
-  if (window.innerWidth <= 768) {
-    sidebar.classList.toggle('open');
-  } else {
-    sidebar.classList.toggle('collapsed');
-  }
-}
-
-function closeSidebar() {
-  if (window.innerWidth <= 768) {
-    document.getElementById('sidebar').classList.remove('open');
-  }
-}
-
-// ── User menu ──────────────────────────────────────────────
-function toggleUserMenu() {
-  const m = document.getElementById('user-menu');
-  m.style.display = m.style.display === 'none' ? 'block' : 'none';
-}
-document.addEventListener('click', e => {
-  if (!e.target.closest('#topbar-avatar') && !e.target.closest('#user-menu')) {
-    document.getElementById('user-menu').style.display = 'none';
-  }
-});
-
-// ── Busca global ───────────────────────────────────────────
-let searchTimeout;
-function handleSearch(value) {
-  clearTimeout(searchTimeout);
-  if (!value.trim()) return;
-  searchTimeout = setTimeout(() => {
-    // Implementado no módulo de busca global
-    if (window.GlobalSearch) GlobalSearch.run(value);
-  }, 400);
-}
-</script>
-</body>
-</html>
